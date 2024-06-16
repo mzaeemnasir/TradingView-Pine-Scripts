@@ -1,0 +1,65 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © DeePeR501
+
+//@version=5
+strategy("Ichimoku Without Compounding", shorttitle="Ichimoku Without Compounding", overlay=true, default_qty_type=strategy.percent_of_equity, default_qty_value=100, initial_capital=1000, currency=currency.EUR, commission_value=0.0, calc_on_every_tick=true, calc_on_order_fills=true)
+
+Message_entry_Long = input("long entry message")
+Message_close_Long = input("long exit message")
+Message_entry_short = input("short entry message")
+Message_close_short = input("short exit message")
+
+tenkanPeriod = input(1, "Tenkan period")
+kinjunPeriod = input(2, "Kinjun period")
+
+enableFilter = input(true,  "Enable Backtesting Range Filtering",group = "TimeSettings")
+fromDate     = input.time(timestamp("1 Jan 2024 00:00 -0500"), "Start Date",group = "TimeSettings")
+toDate       = input.time(timestamp("1 Feb 2099 00:00 +0300"), "End Date",group = "TimeSettings")
+QTY = input.int(1,"Quantity")
+
+
+tradeDateIsAllowed = (time >= fromDate and time <= toDate)
+ema = ta.ema(close,length = 100)
+
+tenkan = (ta.highest(high, tenkanPeriod)+ ta.lowest(low, tenkanPeriod)) / 2
+kijun = (ta.highest(high, kinjunPeriod)+ ta.lowest(low, kinjunPeriod)) / 2
+senkouA = (tenkan + kijun) / 2
+senkouB = (ta.highest(high, 2 * kinjunPeriod) + ta.lowest(low, 2 * kinjunPeriod)) / 2
+
+// Stratégie d'entrée
+if (ta.cross(tenkan, kijun)) and tenkan > kijun and strategy.position_size == 0 and tradeDateIsAllowed and barstate.isconfirmed //and close > ema
+    strategy.entry("Long", strategy.long,alert_message=Message_entry_Long,qty = QTY)
+
+
+if (ta.cross(kijun, tenkan)) and tenkan < kijun and strategy.position_size == 0 and  tradeDateIsAllowed and barstate.isconfirmed //and close < ema
+    strategy.entry("Short", strategy.short,alert_message=Message_entry_short,qty = QTY)
+
+// Stratégie de sortie
+if (ta.cross(kijun, tenkan)) and tenkan < kijun or (close < math.min(senkouA, senkouB)) and barstate.isconfirmed 
+    if (strategy.position_size > 0)
+        strategy.close("Long",alert_message=Message_close_Long)
+
+if (ta.cross(tenkan, kijun)) and tenkan > kijun or (close > math.max(senkouA, senkouB)) and barstate.isconfirmed
+    if (strategy.position_size < 0)
+        strategy.close("Short",alert_message=Message_close_short)
+
+
+// if (close > senkouA)
+//     senkouA := math.max(senkouA[1], close)
+// else
+//     senkouA := senkouA[1]
+
+// if (close < senkouB)
+//     senkouB := math.min(senkouB[1], close)
+// else
+//     senkouB := senkouB[1]
+
+// plot (senkouA, color= color.green, title="Dynamic Resistance")
+// plot (senkouB, color= color.red, title="Dynamic Support")
+
+// Utilisation des lignes de tendance comme indicateurs de momentum
+plot (tenkan, color= color.blue, title= "tenkan-sen")
+plot (kijun, color= color.orange, title= "Kijun-sen")
+
+plotshape(ta.cross(tenkan, kijun),color = color.purple)
+plotshape(ta.cross(kijun,tenkan),color = color.blue,location = location.belowbar)

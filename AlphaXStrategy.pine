@@ -1,0 +1,90 @@
+//@version=5
+strategy("Alpha X Strategy", overlay=true, margin_long=100, margin_short=100, process_orders_on_close = true, calc_on_every_tick = true)
+
+// Inputs
+a = input.float(4,     title = "Sensitivity X")
+c = input.int(8,    title = "Range X")
+h = input(false, title = "Use Heikin Ashi Candles")
+
+xATR  = ta.atr(c)
+nLoss = a * xATR
+
+src = h ? request.security(ticker.heikinashi(syminfo.tickerid), timeframe.period, close, lookahead = barmerge.lookahead_off) : close
+
+xATRTrailingStop = 0.0
+if src > nz(xATRTrailingStop[1], 0) and src[1] > nz(xATRTrailingStop[1], 0)
+    xATRTrailingStop := math.max(nz(xATRTrailingStop[1]), src - nLoss)
+else if src < nz(xATRTrailingStop[1], 0) and src[1] < nz(xATRTrailingStop[1], 0)
+    xATRTrailingStop := math.min(nz(xATRTrailingStop[1]), src + nLoss)
+else
+    if src > nz(xATRTrailingStop[1], 0)
+        xATRTrailingStop := src - nLoss
+    else
+        xATRTrailingStop := src + nLoss
+ 
+pos = 0   
+if src[1] < nz(xATRTrailingStop[1], 0) and src > nz(xATRTrailingStop[1], 0)
+    pos := 1
+else if src[1] > nz(xATRTrailingStop[1], 0) and src < nz(xATRTrailingStop[1], 0)
+    pos := -1
+else
+    pos := nz(pos[1], 0)
+   
+xcolor = pos == -1 ? color.red: pos == 1 ? color.green : color.blue 
+
+ema   = ta.ema(src,1)
+above = ta.crossover(ema, xATRTrailingStop)
+below = ta.crossover(xATRTrailingStop, ema)
+
+buy  = src > xATRTrailingStop and above 
+sell = src < xATRTrailingStop and below
+
+barbuy  = src > xATRTrailingStop 
+barsell = src < xATRTrailingStop 
+
+plotshape(buy,  title = "Buy",  text = 'Buy',  style = shape.labelup,   location = location.belowbar, color= color.green, textcolor = color.white, size = size.tiny)
+plotshape(sell, title = "Sell", text = 'Sell', style = shape.labeldown, location = location.abovebar, color= color.red,   textcolor = color.white, size = size.tiny)
+
+barcolor(barbuy  ? color.green : na)
+barcolor(barsell ? color.red   : na)
+
+useopposite = input.bool(true, "Use Opposite Signal for Close")
+useper = input.bool(false, "Use Percentage for TP/SL")
+tp_per = input.float(2.5, "Take profit %")
+sl_per = input.float(0.5, "Stop loss %")
+useswing = input.bool(false, "Use Swing for TP/SL", tooltip = "Sometime there is no swing high/low")
+pvtLenL = input.int(3, minval=1, title="Pivot Length Left Hand Side")
+pvtLenR = input.int(3, minval=1, title="Pivot Length Right Hand Side")
+
+tp_price = 0.0
+sl_price = 0.0
+
+longCondition = buy
+if (longCondition)
+    if strategy.position_size < 0 and useopposite
+        strategy.close_all("Short Closed On Opposite Signal")
+
+    
+    if useper
+        tp_price := close * (1 + tp_per / 100)
+        sl_price := close * (1 - sl_per / 100)
+    else
+        tp_price := ta.pivothigh(high, pvtLenL, pvtLenR)
+        sl_price := ta.pivotlow(low, pvtLenL, pvtLenR)
+
+    strategy.entry(id = "Long Entry", direction = strategy.long)
+    strategy.exit("Long Exit", "Long Entry", stop=sl_price, limit=tp_price)
+
+shortCondition = sell
+if (shortCondition)    
+    if strategy.position_size > 0 and useopposite
+        strategy.close_all("Long Closed On Opposite Signal")
+
+    if useper
+        tp_price := close * (1 - tp_per / 100)
+        sl_price := close * (1 + sl_per / 100)
+    else
+        tp_price := ta.pivotlow(low, pvtLenL, pvtLenR)
+        sl_price := ta.pivothigh(high, pvtLenL, pvtLenR)
+    strategy.entry(id = "Short Entry", direction = strategy.short)
+    strategy.exit("Short Exit", "Short Entry", stop=sl_price, limit=tp_price)

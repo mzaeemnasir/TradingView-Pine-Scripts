@@ -1,0 +1,118 @@
+//@version=5
+indicator('True Opens [Dango]', overlay=true)
+
+// Input settings for GMT offset
+gmtOffset = input.int(title="GMT Offset (hours)", defval=1, minval=-12, maxval=14)
+
+// Applying the specified color palette
+yearl = input.bool(true, title="Yearly Open", inline="yearly")
+yearlyColor = input.color(#0A043C, title="Color", inline="yearly") // Deep Sapphire
+
+mon = input.bool(true, title="Monthly Open", inline="monthly")
+monthlyColor = input.color(#610345, title="Color", inline="monthly") // Burgundy
+
+week = input.bool(true, title="Weekly Open", inline="weekly")
+weeklyColor = input.color(#AB0E86, title="Color", inline="weekly") // Crimson Red
+
+dai = input.bool(true, title="Daily Open", inline="daily")
+dailyColor = input.color(#FF4E00, title="Color", inline="daily") // Vermilion
+
+lon = input.bool(true, title="London Open", inline="london")
+londonColor = input.color(#FF9505, title="Color", inline="london") // Golden Poppy
+
+ny = input.bool(true, title="NY AM Open", inline="ny")
+nyColor = input.color(#FFC300, title="Color", inline="ny") // Saffron
+
+ny2 = input.bool(true, title="NY PM Open", inline="ny2")
+ny2Color = input.color(#FFEC21, title="Color", inline="ny2") // Canary Yellow
+
+// Input for line length mode
+lineLengthMode = input.string(title="Line Length Mode", options=["Custom", "Current Price"], defval="Custom")
+
+// Custom line length input
+customLineLength = input.int(title="Custom Line Length", defval=10, minval=1)
+
+// Adjusted for GMT Offset
+adjustedTime(time) =>
+    time + gmtOffset * 60 * 60 * 1000
+
+// Define function to get open price
+getOpenPrice() =>
+    var float openPrice = na
+    if ta.change(dayofweek(adjustedTime(time))) != 0
+        openPrice := open
+    openPrice
+
+// Calculate true opens with GMT offset adjustments
+trueYearlyOpen = year(adjustedTime(time)) == year and month == 4 and dayofmonth == 1 ? getOpenPrice() : na
+trueMonthlyOpen = weekofyear >= 2 and weekofyear <= 5 and dayofweek == dayofweek.monday ? getOpenPrice() : na
+trueWeeklyOpen = dayofweek(adjustedTime(time)) == dayofweek.monday and hour(adjustedTime(time)) >= 18 ? getOpenPrice() : na
+trueDailyOpen = hour(adjustedTime(time)) == 0 and minute(adjustedTime(time)) == 0 ? getOpenPrice() : na
+trueSessionLondonOpen = hour(adjustedTime(time)) == 1 and minute(adjustedTime(time)) == 30 ? getOpenPrice() : na
+trueSessionNYOpen = hour(adjustedTime(time)) == 7 and minute(adjustedTime(time)) == 30 ? getOpenPrice() : na
+trueSessionNYAfternoonOpen = hour(adjustedTime(time)) == 13 and minute(adjustedTime(time)) == 30 ? getOpenPrice() : na
+
+// Define lines
+var line yearlyLine = line.new(na, na, na, na, color=color.new(color.white, 0), width=2)
+var line monthlyLine = line.new(na, na, na, na, color=color.new(color.white, 0), width=2)
+var line weeklyLine = line.new(na, na, na, na, color=color.new(color.white, 0), width=2)
+var line dailyLine = line.new(na, na, na, na, color=color.new(color.white, 0), width=2)
+var line sessionLondonLine = line.new(na, na, na, na, color=color.new(color.white, 0), width=2)
+var line sessionNYLine = line.new(na, na, na, na, color=color.new(color.white, 0), width=2)
+var line sessionNYAfternoonLine = line.new(na, na, na, na, color=color.new(color.white, 0), width=2)
+
+// Drawing or updating lines logic modified for "Custom" or "Current Price" functionality
+drawOrUpdateLine(lineRef, price, col, width, length) =>
+    if not na(price)
+        // Always set the starting point of the line
+        line.set_xy1(lineRef, bar_index, price)  // Use current bar index
+        // Check the line length mode to adjust the end point
+        if lineLengthMode == "Custom"
+            // For "Custom", extend the line a fixed number of bars from the opening
+            line.set_xy2(lineRef, bar_index + length, price)
+        else
+            // For "Current Price", extend the line horizontally to the current price
+            line.set_xy2(lineRef, bar_index, close) // Horizontal line to current price
+        line.set_color(lineRef, col)
+        line.set_width(lineRef, width)
+
+// Drawing or updating lines as before, now accounting for both line length modes properly
+drawOrUpdateLine(yearlyLine, trueYearlyOpen, yearlyColor, 2, customLineLength)
+drawOrUpdateLine(monthlyLine, trueMonthlyOpen, monthlyColor, 2, customLineLength)
+drawOrUpdateLine(weeklyLine, trueWeeklyOpen, weeklyColor, 2, customLineLength)
+drawOrUpdateLine(dailyLine, trueDailyOpen, dailyColor, 2, customLineLength)
+drawOrUpdateLine(sessionLondonLine, trueSessionLondonOpen, londonColor, 2, customLineLength)
+drawOrUpdateLine(sessionNYLine, trueSessionNYOpen, nyColor, 2, customLineLength)
+drawOrUpdateLine(sessionNYAfternoonLine, trueSessionNYAfternoonOpen, ny2Color, 2, customLineLength)
+
+// Labels for the opens
+label.new(bar_index + customLineLength, trueYearlyOpen, text="Yearly Open", xloc=xloc.bar_index, yloc=yloc.price, color=color.white, style=label.style_label_up, textcolor=color.white, size=size.small)
+label.new(bar_index + customLineLength, trueMonthlyOpen, text="Monthly Open", xloc=xloc.bar_index, yloc=yloc.price, color=color.white, style=label.style_label_up, textcolor=color.white, size=size.small)
+label.new(bar_index + customLineLength, trueWeeklyOpen, text="Weekly Open", xloc=xloc.bar_index, yloc=yloc.price, color=color.white, style=label.style_label_up, textcolor=color.white, size=size.small)
+label.new(bar_index + customLineLength, trueDailyOpen, text="Daily Open", xloc=xloc.bar_index, yloc=yloc.price, color=color.white, style=label.style_label_up, textcolor=color.white, size=size.small)
+label.new(bar_index + customLineLength, trueSessionLondonOpen, text="London Open", xloc=xloc.bar_index, yloc=yloc.price, color=color.white, style=label.style_label_up, textcolor=color.white, size=size.small)
+label.new(bar_index + customLineLength, trueSessionNYOpen, text="NY AM Open", xloc=xloc.bar_index, yloc=yloc.price, color=color.white, style=label.style_label_up, textcolor=color.white, size=size.small)
+label.new(bar_index + customLineLength, trueSessionNYAfternoonOpen, text="NY PM Open", xloc=xloc.bar_index, yloc=yloc.price, color=color.white, style=label.style_label_up, textcolor=color.white, size=size.small)
+
+// Implementing horizontal lines to the current bar's candle
+drawCurrentPriceLines() =>
+    line.delete(yearlyLine)
+    line.delete(monthlyLine)
+    line.delete(weeklyLine)
+    line.delete(dailyLine)
+    line.delete(sessionLondonLine)
+    line.delete(sessionNYLine)
+    line.delete(sessionNYAfternoonLine)
+    
+    // Drawing horizontal lines to the current price for each open
+    if lineLengthMode == "Current Price"
+        drawOrUpdateLine(yearlyLine, close, yearlyColor, 2, customLineLength)
+        drawOrUpdateLine(monthlyLine, close, monthlyColor, 2, customLineLength)
+        drawOrUpdateLine(weeklyLine, close, weeklyColor, 2, customLineLength)
+        drawOrUpdateLine(dailyLine, close, dailyColor, 2, customLineLength)
+        drawOrUpdateLine(sessionLondonLine, close, londonColor, 2, customLineLength)
+        drawOrUpdateLine(sessionNYLine, close, nyColor, 2, customLineLength)
+        drawOrUpdateLine(sessionNYAfternoonLine, close, ny2Color, 2, customLineLength)
+
+drawCurrentPriceLines()
+

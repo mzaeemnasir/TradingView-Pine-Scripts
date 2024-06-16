@@ -1,0 +1,135 @@
+//@version=5
+indicator("Auto Fibonachi", overlay=true)
+
+isFirstCandle = ta.change(time("D")) != 0
+
+showFibLong = input.bool(true,title = "Show Long Fibonachi")
+showFibShort = input.bool(true,title = "Show Short Fibonachi")
+
+amount = input.float(defval = 1000,title = "Amount You Have USD")
+leverage = input.int(defval = 10,title = "Leverage")
+tp = input.float(defval = 0,title = "TakeProfit")
+sl = input.float(defval = 0,title = "StopLoss")
+
+tp := leverage * tp
+sl := leverage * sl
+
+profit = amount * ((tp)/100)
+loss = amount * ((sl)/100)
+
+var table perfTable = table.new(position.top_right,columns =  10, rows =  10, border_width = 2)
+
+color1 = color.lime
+color2 = color.aqua
+
+// // Add data to the table
+// table.cell(perfTable, 0, 0, "Amount",bgcolor = color1)
+// table.cell(perfTable, 0, 1, "Leverage",bgcolor = color1)
+// table.cell(perfTable, 0, 2, "Profit",bgcolor = color1)
+// table.cell(perfTable, 0, 3, "Loss",bgcolor = color1)
+// table.cell(perfTable, 0, 4, "Highest Of the Day",bgcolor = color1)
+// table.cell(perfTable, 0, 5, "Lowest Of the Day",bgcolor = color1)
+
+
+var float highest = na
+var int highest_index = na
+var float lowest = na
+var int lowest_index = na
+var int firstCandleIndex = na
+
+
+if (isFirstCandle == 1)
+    highest := high
+    lowest := low
+    firstCandleIndex := bar_index
+
+if (highest < high)
+    highest := high
+    highest_index := bar_index
+
+if (lowest > low)
+    lowest := low
+    lowest_index := bar_index
+
+
+
+
+// table.cell(perfTable, 1, 0,text = str.tostring(amount),bgcolor = color2)
+// table.cell(perfTable, 1, 1,text = str.tostring(leverage),bgcolor = color2)
+// table.cell(perfTable, 1, 2,text = str.tostring(profit),bgcolor = color2)
+// table.cell(perfTable, 1, 3,text = str.tostring(loss),bgcolor = color2)
+// table.cell(perfTable, 1, 4,text = str.tostring(highest),bgcolor = color2)
+// table.cell(perfTable, 1, 5,text = str.tostring(lowest),bgcolor = color2)
+
+
+
+
+bgcolor(isFirstCandle == 1 ? color.green : na, offset=0,transp=80)
+
+
+// Calculate Fibonacci levels
+var float fib0 = highest
+var float fib23_6 = highest - ((highest - lowest) * 0.236)
+var float fib38_2 = highest - ((highest - lowest) * 0.382)
+var float fib50 = highest - ((highest - lowest) * 0.5)
+var float fib61_8 = highest - ((highest - lowest) * 0.618)
+var float fib76_4 = highest - ((highest - lowest) * 0.786)
+var float fib100 = lowest
+
+
+fib0 := highest
+fib23_6 := highest - ((highest - lowest) * 0.236)
+fib38_2 := highest - ((highest - lowest) * 0.382)
+
+fib50 := highest - ((highest - lowest) * 0.5)
+fib61_8 := highest - ((highest - lowest) * 0.618)
+fib76_4 := highest - ((highest - lowest) * 0.786)
+fib100 := lowest
+
+
+var line x = na 
+var line y = na 
+
+var line a = na 
+var line b = na 
+
+// if the size of the line a is greater than 0 then delete the line
+line.delete(a) 
+
+line.delete(b) 
+
+line.delete(x) 
+
+line.delete(y) 
+
+// line.delete(x)
+// line.delete(y)
+// calculating the number of candles from first candle to current candle
+var int candles = na
+candles := bar_index - firstCandleIndex
+
+x  := line.new(bar_index[candles],showFibLong ?  fib50 : na , bar_index, showFibLong ?  fib50 : na , extend=extend.none, color=color.green) 
+y  := line.new(bar_index[candles],showFibLong?  fib61_8 : na , bar_index, showFibLong?  fib61_8 : na  , extend=extend.none, color=color.green)
+
+
+
+
+
+a := line.new(bar_index[candles],highest,bar_index,highest,extend = extend.none,color = color.white,width = 2)
+b := line.new(bar_index[candles],lowest,bar_index,lowest,extend = extend.none,color = color.white,width = 2)
+
+
+
+var float shortFib50 = na
+var float shortFib618 = na
+var line c = na 
+var line d = na 
+
+line.delete(c)
+line.delete(d)
+
+shortFib50 := lowest - ((lowest - highest) * 0.5)
+shortFib618 := lowest - ((lowest - highest) * 0.618)
+
+d := line.new(bar_index[candles], showFibShort ? shortFib618: na ,bar_index,showFibShort ? shortFib618: na,extend = extend.none,color = color.red,width = 2)
+c := line.new(bar_index[candles],showFibShort ? shortFib50: na ,bar_index,showFibShort ? shortFib50: na,extend = extend.none,color = color.red,width = 2)
