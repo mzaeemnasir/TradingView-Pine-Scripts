@@ -1,5 +1,5 @@
 //@version=5
-
+// this line must be added
 // Ema Cross Over Strategy + MACD + Ema/Vwap + Trailing Stop Loss + renko candles
 
 
